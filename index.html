@@ -262,7 +262,7 @@
                     createGrid(grid.length);
                 }
                 placeMines(grid.length, row, col);
-                document.getElementById('status').textContent += "（首次点击是安全的）";
+                document.getElementById('status').textContent += "(First pick is safe)";
             }
 
             if (grid[row][col].isMine) {
