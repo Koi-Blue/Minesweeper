@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>扫雷游戏（改进版）</title>
+    <title>---MineSweeper---</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -114,30 +114,30 @@
     <div class="game-container">
         <div class="controls">
             <select id="difficulty">
-                <option value="5">简单 (5x5)</option>
-                <option value="9">中等 (9x9)</option>
-                <option value="13">困难 (13x13)</option>
+                <option value="5">easy (5x5)</option>
+                <option value="9">medium (9x9)</option>
+                <option value="13">difficult (13x13)</option>
             </select>
-            <button onclick="initGame()">开始新游戏</button>
+            <button onclick="initGame()">Begin as new time</button>
         </div>
         <div id="grid" class="grid"></div>
-        <div class="status-bar" id="status">欢迎来到扫雷游戏！请选择难度后开始</div>
+        <div class="status-bar" id="status">welcome and choose one~</div>
         <div class="color-code">
             <div class="color-item">
                 <div class="color-box" style="background-color: #bbb"></div>
-                <span>未翻开</span>
+                <span>Not yet</span>
             </div>
             <div class="color-item">
                 <div class="color-box" style="background-color: #e0e0e0"></div>
-                <span>已翻开</span>
+                <span>Has been</span>
             </div>
             <div class="color-item">
                 <div class="color-box" style="background-color: #ffd700"></div>
-                <span>标记</span>
+                <span>Sign</span>
             </div>
             <div class="color-item">
                 <div class="color-box" style="background-color: #ff4444"></div>
-                <span>地雷</span>
+                <span>Boom</span>
             </div>
         </div>
     </div>
@@ -164,7 +164,7 @@
             firstClick = true;
             const size = parseInt(document.getElementById('difficulty').value);
             createGrid(size);
-            document.getElementById('status').textContent = `游戏开始！找到所有 ${mineCounts[size]} 个地雷`;
+            document.getElementById('status').textContent = `Game begin,please find ${mineCounts[size]} booooooms`;
         }
 
         function createGrid(size) {
@@ -341,7 +341,7 @@
             
             if (correctFlags === mineCounts[size] && allRevealed) {
                 gameOver = true;
-                document.getElementById('status').textContent = '恭喜！你赢得了游戏！';
+                document.getElementById('status').textContent = '~~Win~~';
                 revealAll();
             }
         }
