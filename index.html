@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>扫雷游戏（改进版）</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        select, button {
+            padding: 8px 15px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background-color: #333;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            gap: 2px;
+            background-color: #999;
+            padding: 3px;
+            border-radius: 5px;
+        }
+
+        .cell {
+            width: 35px;
+            height: 35px;
+            background-color: #bbb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            border: 2px outset #ddd;
+            transition: all 0.2s;
+        }
+
+        .cell:hover {
+            background-color: #a0a0a0;
+        }
+
+        .revealed {
+            background-color: #e0e0e0;
+            border-style: inset;
+        }
+
+        .mine {
+            background-color: #ff4444;
+            background-image: url('data:image/svg+xml,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8"/></svg>');
+        }
+
+        .flagged {
+            background-color: #ffd700;
+            background-image: url('data:image/svg+xml,<svg viewBox="0 0 24 24" fill="red" xmlns="http://www.w3.org/2000/svg"><path d="M2 22L22 12 2 2z"/></svg>');
+        }
+
+        .status-bar {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .color-code {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .color-box {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="controls">
+            <select id="difficulty">
+                <option value="5">简单 (5x5)</option>
+                <option value="9">中等 (9x9)</option>
+                <option value="13">困难 (13x13)</option>
+            </select>
+            <button onclick="initGame()">开始新游戏</button>
+        </div>
+        <div id="grid" class="grid"></div>
+        <div class="status-bar" id="status">欢迎来到扫雷游戏！请选择难度后开始</div>
+        <div class="color-code">
+            <div class="color-item">
+                <div class="color-box" style="background-color: #bbb"></div>
+                <span>未翻开</span>
+            </div>
+            <div class="color-item">
+                <div class="color-box" style="background-color: #e0e0e0"></div>
+                <span>已翻开</span>
+            </div>
+            <div class="color-item">
+                <div class="color-box" style="background-color: #ffd700"></div>
+                <span>标记</span>
+            </div>
+            <div class="color-item">
+                <div class="color-box" style="background-color: #ff4444"></div>
+                <span>地雷</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let grid = [];
+        let mines = [];
+        let gameOver = false;
+        let firstClick = true;
+        const mineCounts = {5: 3, 9: 10, 13: 30};
+        const colors = {
+            1: '#1976D2',   // 蓝色
+            2: '#388E3C',   // 绿色
+            3: '#D32F2F',   // 红色
+            4: '#7B1FA2',   // 紫色
+            5: '#FFA000',   // 橙色
+            6: '#0097A7',   // 青色
+            7: '#5D4037',   // 棕色
+            8: '#616161'    // 灰色
+        };
+
+        function initGame() {
+            gameOver = false;
+            firstClick = true;
+            const size = parseInt(document.getElementById('difficulty').value);
+            createGrid(size);
+            document.getElementById('status').textContent = `游戏开始！找到所有 ${mineCounts[size]} 个地雷`;
+        }
+
+        function createGrid(size) {
+            const container = document.getElementById('grid');
+            container.style.gridTemplateColumns = `repeat(${size}, 35px)`;
+            container.innerHTML = '';
+            grid = [];
+
+            for (let i = 0; i < size; i++) {
+                grid[i] = [];
+                for (let j = 0; j < size; j++) {
+                    grid[i][j] = {
+                        isMine: false,
+                        revealed: false,
+                        flagged: false,
+                        neighborMines: 0
+                    };
+
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.onclick = handleClick;
+                    cell.oncontextmenu = handleRightClick;
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function placeMines(size, safeRow, safeCol) {
+            mines = [];
+            const totalMines = mineCounts[size];
+            
+            // 确保安全区域周围没有地雷
+            const safeArea = [];
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (safeRow + i >= 0 && safeRow + i < size &&
+                        safeCol + j >= 0 && safeCol + j < size) {
+                        safeArea.push([safeRow + i, safeCol + j]);
+                    }
+                }
+            }
+
+            while (mines.length < totalMines) {
+                const row = Math.floor(Math.random() * size);
+                const col = Math.floor(Math.random() * size);
+                
+                if (!grid[row][col].isMine && 
+                    !safeArea.some(([r, c]) => r === row && c === col)) {
+                    grid[row][col].isMine = true;
+                    mines.push([row, col]);
+                }
+            }
+
+            // 重新计算所有数字
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    if (!grid[i][j].isMine) {
+                        grid[i][j].neighborMines = countNeighborMines(i, j, size);
+                    }
+                }
+            }
+        }
+
+        function countNeighborMines(row, col, size) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const newRow = row + i;
+                    const newCol = col + j;
+                    if (newRow >= 0 && newRow < size && 
+                        newCol >= 0 && newCol < size &&
+                        grid[newRow][newCol].isMine) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        function handleClick(event) {
+            if (gameOver) return;
+            
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+            
+            if (grid[row][col].flagged) return;
+            
+            // 首次点击处理
+            if (firstClick) {
+                firstClick = false;
+                // 如果首次点击是地雷，重新生成地雷分布
+                if (grid[row][col].isMine) {
+                    createGrid(grid.length);
+                }
+                placeMines(grid.length, row, col);
+                document.getElementById('status').textContent += "（首次点击是安全的）";
+            }
+
+            if (grid[row][col].isMine) {
+                gameOver = true;
+                revealAll();
+                document.getElementById('status').textContent = '游戏结束！点击地雷了！';
+                return;
+            }
+            
+            revealCell(row, col);
+            checkWin();
+        }
+
+        function handleRightClick(event) {
+            event.preventDefault();
+            if (gameOver || !event.target.classList.contains('cell')) return;
+            
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+            
+            if (!grid[row][col].revealed) {
+                grid[row][col].flagged = !grid[row][col].flagged;
+                event.target.classList.toggle('flagged', grid[row][col].flagged);
+                checkWin();
+            }
+        }
+
+        function revealCell(row, col) {
+            if (row < 0 || row >= grid.length || 
+                col < 0 || col >= grid.length ||
+                grid[row][col].revealed ||
+                grid[row][col].flagged) return;
+
+            grid[row][col].revealed = true;
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.add('revealed');
+            
+            if (grid[row][col].neighborMines > 0) {
+                cell.textContent = grid[row][col].neighborMines;
+                cell.style.color = colors[grid[row][col].neighborMines];
+            } else {
+                // 自动展开空白区域
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        revealCell(row + i, col + j);
+                    }
+                }
+            }
+        }
+
+        function revealAll() {
+            mines.forEach(([row, col]) => {
+                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                cell.classList.add('mine');
+            });
+        }
+
+        function checkWin() {
+            const size = grid.length;
+            let correctFlags = 0;
+            
+            // 检查所有地雷是否都被正确标记
+            mines.forEach(([row, col]) => {
+                if (grid[row][col].flagged) correctFlags++;
+            });
+            
+            // 检查所有非雷区域是否都已翻开
+            let allRevealed = true;
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    if (!grid[i][j].isMine && !grid[i][j].revealed) {
+                        allRevealed = false;
+                    }
+                }
+            }
+            
+            if (correctFlags === mineCounts[size] && allRevealed) {
+                gameOver = true;
+                document.getElementById('status').textContent = '恭喜！你赢得了游戏！';
+                revealAll();
+            }
+        }
+    </script>
+</body>
+</html>
